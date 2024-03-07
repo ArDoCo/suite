@@ -12,5 +12,10 @@ RUN echo "Cloning ArDoCo Projects" && \
     git clone --depth 1 -b ${ARDOCO_VERSION} https://github.com/ArDoCo/Core.git && \
     git clone --depth 1 -b ${ARDOCO_VERSION} https://github.com/ArDoCo/TLR.git && \
     git clone --depth 1 -b ${ARDOCO_VERSION} https://github.com/ArDoCo/InconsistencyDetection.git && \
-    echo "Cloning of ArDoCo version $ARDOCO_VERSION done."
+    echo "Cloning of ArDoCo version $ARDOCO_VERSION done." && \
+    echo "Building ArDoCo Projects" && \
+    cd Core && mvn compile && \
+    cd ../TLR && mvn compile && \
+    cd ../InconsistencyDetection && mvn compile && \
+    echo "Building of ArDoCo Projects done."
 ENTRYPOINT [ "/bin/bash" ]
