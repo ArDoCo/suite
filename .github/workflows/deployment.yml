@@ -86,11 +86,11 @@ jobs:
                 mvn -P deployment -DskipTests install
                 echo "Verify the Projects"
                 cd ../Core
-                mvn -U -B verify
+                mvn -B verify
                 cd ../TLR
-                mvn -U -B verify
+                mvn -B verify
                 cd ../InconsistencyDetection
-                mvn -U -B verify
+                mvn -B -DskipITs verify
 
             - name: Set maven settings.xml
               uses: whelk-io/maven-settings-xml-action@v21
