@@ -21,7 +21,7 @@ jobs:
             - uses: actions/checkout@v4
             
             - name: Build image
-              run: docker build . --file Dockerfile --tag "ghcr.io/ardoco/suite:v${{ github.event.inputs.release-version }}"
+              run: docker build . --file Dockerfile --build-arg="ARDOCO_VERSION=v${{ github.event.inputs.release-version }}" --tag "ghcr.io/ardoco/suite:v${{ github.event.inputs.release-version }}"
             
             - name: Login to Registry
               run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
