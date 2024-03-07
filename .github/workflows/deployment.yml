@@ -1,0 +1,112 @@
+name: ArDoCo Deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+        release-version:
+          type: string
+          description: The version for release (Tag in the Repositories without heading 'v'). E.g., "1.2.3"
+          required: true
+
+env:
+    ARDOCO_VERSION: "v${{ github.event.inputs.release-version }}"
+
+jobs:
+    docker:
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            packages: write
+        steps:
+            - uses: actions/checkout@v4
+            
+            - name: Build image
+              run: docker build . --file Dockerfile --tag "ghcr.io/ardoco/suite:v${{ github.event.inputs.release-version }}"
+            
+            - name: Login to Registry
+              run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
+            
+            - name: Push Image with Version and Latest Tag
+              run: |
+                docker push "ghcr.io/ardoco/suite:v${{ github.event.inputs.release-version }}"
+                docker tag "ghcr.io/ardoco/suite:v${{ github.event.inputs.release-version }}" "ghcr.io/ardoco/suite:latest"
+                docker push "ghcr.io/ardoco/suite:latest"
+
+    deploy:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Java with Cache
+              uses: actions/setup-java@v4
+              with:
+                java-version: 21
+                distribution: 'temurin'
+
+            - name: Clone ArDoCo Projects
+              shell: bash
+              run: |
+                set -e
+                git clone --depth 1 -b ${ARDOCO_VERSION} https://github.com/ArDoCo/Core.git
+                git clone --depth 1 -b ${ARDOCO_VERSION} https://github.com/ArDoCo/TLR.git
+                git clone --depth 1 -b ${ARDOCO_VERSION} https://github.com/ArDoCo/InconsistencyDetection.git
+            
+            - name: Check Version of ArDoCo Projects
+              shell: bash
+              run: |
+                set -e
+                for project in Core TLR InconsistencyDetection; do
+                    cd $project
+                    FOUND_VERSION=$(mvn dependency:tree -DincludeScope=test | sort | grep -E "io.github.ardoco.(core|tlr|id|lissa)" | uniq | grep -oP ':\K\d+\.\d+\.\d+(-\w+)?' | awk '!seen[$0]++')
+                    
+                    if [[ $FOUND_VERSION == *"SNAPSHOT"* ]]; then
+                        echo "The version of ArDoCo Projects is a SNAPSHOT version."
+                        exit 1
+                    fi
+                    if [ "v${FOUND_VERSION}" != "${ARDOCO_VERSION}" ]; then
+                        echo "The version of ArDoCo Projects is not the same as the release version."
+                        echo "Found: ${FOUND_VERSION}, Expected: ${ARDOCO_VERSION}"
+                        exit 1
+                    fi
+                    cd ..
+                done
+
+            - name: Import GPG key
+              uses: crazy-max/ghaction-import-gpg@v6
+              with:
+                gpg_private_key: ${{ secrets.GPG_KEY }}
+
+            - name: Test ArDoCo Projects
+              shell: bash
+              run: |
+                set -e
+                cd Core
+                mvn -P deployment -DskipTests install
+                cd ../TLR
+                mvn -P deployment -DskipTests install
+                cd ../InconsistencyDetection
+                mvn -P deployment -DskipTests install
+                echo "Verify the Projects"
+                cd ../Core
+                mvn -U -B verify
+                cd ../TLR
+                mvn -U -B verify
+                cd ../InconsistencyDetection
+                mvn -U -B verify
+
+            - name: Set maven settings.xml
+              uses: whelk-io/maven-settings-xml-action@v21
+              with:
+                servers: '[{ "id": "ossrh", "username": "${{ secrets.OSSRH_USER }}", "password": "${{ secrets.OSSRH_TOKEN }}" }]'
+
+            - name: Deploy ArDoCo Projects
+              shell: bash
+              run: |
+                set -e
+                cd Core
+                mvn clean
+                mvn -B -DskipTests -P deployment deploy
+                cd ../TLR
+                mvn clean
+                mvn -B -DskipTests -P deployment deploy
+                cd ../InconsistencyDetection
+                mvn clean
+                mvn -B -DskipTests -P deployment deploy
