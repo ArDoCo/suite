@@ -53,7 +53,7 @@ jobs:
               run: |
                 for project in Core TLR InconsistencyDetection; do
                     cd $project
-                    FOUND_VERSION=$(mvn dependency:tree -DincludeScope=test | sort | grep -E "io.github.ardoco.(core|tlr|id|lissa)" | uniq | grep -oP ':\K\d+\.\d+\.\d+(-\w+)?' | awk '!seen[$0]++')
+                    FOUND_VERSION=$(mvn dependency:tree -DincludeScope=test | sort | grep -E "io.github.ardoco.(core|tlr|id|lissa)" | grep -oP ':\K\d+\.\d+\.\d+(-\w+)?' | awk '!seen[$0]++')
 
                     if [[ $FOUND_VERSION == *"SNAPSHOT"* ]]; then
                         echo "The version of ArDoCo Projects is a SNAPSHOT version."
