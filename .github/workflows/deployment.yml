@@ -19,13 +19,13 @@ jobs:
             packages: write
         steps:
             - uses: actions/checkout@v4
-            
+
             - name: Build image
               run: docker build . --file Dockerfile --build-arg="ARDOCO_VERSION=v${{ github.event.inputs.release-version }}" --tag "ghcr.io/ardoco/suite:v${{ github.event.inputs.release-version }}"
-            
+
             - name: Login to Registry
               run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
-            
+
             - name: Push Image with Version and Latest Tag
               run: |
                 docker push "ghcr.io/ardoco/suite:v${{ github.event.inputs.release-version }}"
@@ -35,7 +35,7 @@ jobs:
     deploy:
         runs-on: ubuntu-latest
         steps:
-            - name: Java with Cache
+            - name: Java without Cache
               uses: actions/setup-java@v4
               with:
                 java-version: 21
@@ -44,19 +44,17 @@ jobs:
             - name: Clone ArDoCo Projects
               shell: bash
               run: |
-                set -e
                 git clone --depth 1 -b ${ARDOCO_VERSION} https://github.com/ArDoCo/Core.git
                 git clone --depth 1 -b ${ARDOCO_VERSION} https://github.com/ArDoCo/TLR.git
                 git clone --depth 1 -b ${ARDOCO_VERSION} https://github.com/ArDoCo/InconsistencyDetection.git
-            
+
             - name: Check Version of ArDoCo Projects
               shell: bash
               run: |
-                set -e
                 for project in Core TLR InconsistencyDetection; do
                     cd $project
                     FOUND_VERSION=$(mvn dependency:tree -DincludeScope=test | sort | grep -E "io.github.ardoco.(core|tlr|id|lissa)" | uniq | grep -oP ':\K\d+\.\d+\.\d+(-\w+)?' | awk '!seen[$0]++')
-                    
+
                     if [[ $FOUND_VERSION == *"SNAPSHOT"* ]]; then
                         echo "The version of ArDoCo Projects is a SNAPSHOT version."
                         exit 1
@@ -77,7 +75,6 @@ jobs:
             - name: Test ArDoCo Projects
               shell: bash
               run: |
-                set -e
                 cd Core
                 mvn -P deployment -DskipTests install
                 cd ../TLR
@@ -100,7 +97,6 @@ jobs:
             - name: Deploy ArDoCo Projects
               shell: bash
               run: |
-                set -e
                 cd Core
                 mvn clean
                 mvn -B -DskipTests -P deployment deploy
