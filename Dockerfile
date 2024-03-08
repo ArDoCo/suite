@@ -14,8 +14,8 @@ RUN echo "Cloning ArDoCo Projects" && \
     git clone --depth 1 -b ${ARDOCO_VERSION} https://github.com/ArDoCo/InconsistencyDetection.git && \
     echo "Cloning of ArDoCo version $ARDOCO_VERSION done." && \
     echo "Building ArDoCo Projects" && \
-    cd Core && mvn compile && \
-    cd ../TLR && mvn compile && \
-    cd ../InconsistencyDetection && mvn compile && \
+    cd Core && mvn -DskipTests -P deployment install && \
+    cd ../TLR && mvn -DskipTests -P deployment install && \
+    cd ../InconsistencyDetection && mvn -DskipTests -P deployment install && \
     echo "Building of ArDoCo Projects done."
 ENTRYPOINT [ "/bin/bash" ]
